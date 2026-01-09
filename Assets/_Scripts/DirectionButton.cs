@@ -1,20 +1,38 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.EventSystems;
 
-/* ÅÍÄ¡ ÀÔ·ÂÀ» ¹Ş±â À§ÇÑ ½ºÅ©¸³Æ® ÀÔ´Ï´Ù.*/
-public class DirectionButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+/* í„°ì¹˜ ì…ë ¥ì„ ë°›ê¸° ìœ„í•œ ìŠ¤í¬ë¦½íŠ¸ ì…ë‹ˆë‹¤.*/
+public class DirectionButton : MonoBehaviour,
+    IPointerDownHandler, IPointerUpHandler,
+    IPointerExitHandler, ICancelHandler
 {
-    // ¿ÜºÎ¿¡¼­ ÀÌ º¯¼ö¸¦ º¸°í ´­·È´ÂÁö ÆÇ´ÜÇÔ
+    // ì™¸ë¶€ í”„ë˜ìŠ¤ íŒë‹¨ ë³€ìˆ˜
     public bool IsPressed { get; private set; }
 
-    // ´­·¶À» ¶§
+    // ëˆŒë €ì„ ë•Œ
     public void OnPointerDown(PointerEventData eventData)
     {
         IsPressed = true;
     }
 
-    // ¶ÃÀ» ¶§
+    // ë—ì„ ë•Œ
     public void OnPointerUp(PointerEventData eventData)
+    {
+        IsPressed = false;
+    }
+
+    // ëˆ„ë¥¸ ìƒíƒœë¡œ ë²„íŠ¼ ë°–ìœ¼ë¡œ ë‚˜ê°€ë©´(ë“œë˜ê·¸ë¡œ ë²—ì–´ë‚¨) false ì²˜ë¦¬
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        IsPressed = false;
+    }
+
+    public void OnCancel(BaseEventData eventData)
+    {
+        IsPressed = false;
+    }
+
+    private void OnDisable()
     {
         IsPressed = false;
     }

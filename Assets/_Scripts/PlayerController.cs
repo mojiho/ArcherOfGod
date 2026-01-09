@@ -1,8 +1,8 @@
-using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
-/* 플레이어 캐릭터를 제어하는 스크립트 */
-
+/* 플레이어 움직임 컨트롤러 클래스 입니다. */
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(SpriteRenderer))]
 public class PlayerController : MonoBehaviour
@@ -11,165 +11,207 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
 
     [Header("Mobile Inputs")]
-    [SerializeField] private DirectionButton btnLeft;  // 왼쪽 버튼 연결
-    [SerializeField] private DirectionButton btnRight; // 오른쪽 버튼 연결
+    [SerializeField] private DirectionButton btnLeft;
+    [SerializeField] private DirectionButton btnRight;
 
     [Header("Attack Settings")]
-    [SerializeField] private Transform firePos;         // 화살 발사 위치 오브젝트
-    [SerializeField] private float fireDelay = 0.7f;    // 버튼 누르고 화살이 나갈 때까지 걸리는 시간
+    [SerializeField] private Transform firePos;
+    [SerializeField] private float fireDelay = 0.7f;
 
-    // 공격용 (버튼 클릭 방식)
-    private bool isAttackButtonPressed = false;
+    [Header("Behavior")]
+    [SerializeField] private bool autoFireWhenIdle = true; // 서있으면 자동 연사
 
-    // 내부 컴포넌트
+    [Header("Skill UI")]
+    [SerializeField] private List<SkillSlotUI> skillSlots;
+
+    private List<SkillBase> _skills;
+
+    // Input flags (UI)
+    private bool _attackPressed;
+
+    // Components
     private Animator _animator;
-    private SpriteRenderer _spriteRenderer;
-    private Vector2 _inputVec;
+    private SpriteRenderer _sprite;
 
-    // [최적화] 코루틴 관련 변수
-    private WaitForSeconds _wsFireDelay; // 대기 시간 객체 재활용
-    private Coroutine _attackRoutine;    // 현재 실행 중인 공격 코루틴 저장
-    private bool _isAttacking = false;   // 공격 상태 플래그
+    // State
+    private Vector2 _moveInput;
+    private bool _isAttacking;
+
+    // Coroutine / cached waits
+    private Coroutine _attackRoutine;
+    private WaitForSeconds _wsFireDelay;
+    private static readonly WaitForSeconds WS_ATTACK_END = new WaitForSeconds(0.1f);
+
+    // Tunables
+    private const float INPUT_DEADZONE = 0.1f;
+
+    private bool IsMoving => Mathf.Abs(_moveInput.x) >= INPUT_DEADZONE;
+
+    // "정지 상태에서만 공격 시작" 규칙
+    private bool CanStartAttack => !_isAttacking && !IsMoving;
 
     private void Awake()
     {
         _animator = GetComponent<Animator>();
-        _spriteRenderer = GetComponent<SpriteRenderer>();
+        _sprite = GetComponent<SpriteRenderer>();
     }
 
     private void Start()
     {
-        // 게임 시작 시 대기 시간 객체를 미리 만들어둠 (최적화)
         _wsFireDelay = new WaitForSeconds(fireDelay);
     }
 
-    // 공격속도 변경 시 호출
+    private void Update()
+    {
+        ReadMoveInput();
+        ApplyMove();
+
+        UpdateAnimation();
+
+        HandleAttackInput();
+        HandleAutoFire();
+    }
+
+    private void ReadMoveInput()
+    {
+        float h = Input.GetAxisRaw("Horizontal");
+
+        if (btnLeft != null && btnLeft.IsPressed) h = -1f;
+        if (btnRight != null && btnRight.IsPressed) h = 1f;
+        if (btnLeft != null && btnRight != null && btnLeft.IsPressed && btnRight.IsPressed)
+            h = 0f;
+
+        if (Mathf.Abs(h) < INPUT_DEADZONE) h = 0f;
+
+        if (_isAttacking && h != 0f)
+        {
+            CancelAttackInternal(clearQueuedAttack: true);
+        }
+
+        _moveInput = new Vector2(h, 0f);
+    }
+
+    public void OnAttackButtonDown()
+    {
+        _attackPressed = true;
+    }
+
+    private void ApplyMove()
+    {
+        if (_moveInput.x == 0f) return;
+        transform.Translate(_moveInput * moveSpeed * Time.deltaTime);
+    }
+
+    private void HandleAttackInput()
+    {
+        bool pressed = Input.GetKeyDown(KeyCode.Z) || _attackPressed;
+        if (!pressed) return;
+
+        // 이동 중 눌러도 멈추자마자 나가는 "지연 발사" 방지
+        _attackPressed = false;
+
+        if (!CanStartAttack) return;
+
+        StartAttack();
+    }
+
+    private void HandleAutoFire()
+    {
+        if (!autoFireWhenIdle) return;
+        if (!CanStartAttack) return;
+        if (_attackRoutine != null) return;   // 중복 시작 방지
+
+        StartAttack();
+    }
+
+    private void StartAttack()
+    {
+        // 안전: 혹시 남아있으면 정리
+        StopAttackCoroutineOnly();
+
+        _attackRoutine = StartCoroutine(CoAttack());
+    }
+
+    private IEnumerator CoAttack()
+    {
+        _isAttacking = true;
+        _moveInput = Vector2.zero;
+
+        _animator.SetBool(AnimationKey.IsAttack, true);
+
+        yield return _wsFireDelay;
+
+        // 공격 도중 취소되었으면 발사하지 않음
+        if (_isAttacking)
+            Fire();
+
+        yield return WS_ATTACK_END;
+
+        FinishAttack();
+    }
+
+    private void FinishAttack()
+    {
+        _isAttacking = false;
+        _attackRoutine = null;
+
+        _animator.SetBool(AnimationKey.IsAttack, false);
+    }
+
+    // 외부에서 호출할 수 있는 취소 함수
+    public void CancelAttack()
+    {
+        CancelAttackInternal(clearQueuedAttack: false);
+    }
+
+    private void CancelAttackInternal(bool clearQueuedAttack)
+    {
+        StopAttackCoroutineOnly();
+        _isAttacking = false;
+
+        _animator.SetBool(AnimationKey.IsAttack, false);
+
+        if (clearQueuedAttack)
+            _attackPressed = false;
+    }
+
+    private void StopAttackCoroutineOnly()
+    {
+        if (_attackRoutine != null)
+        {
+            StopCoroutine(_attackRoutine);
+            _attackRoutine = null;
+        }
+    }
+
     public void SetAttackSpeed(float newDelay)
     {
         fireDelay = newDelay;
         _wsFireDelay = new WaitForSeconds(fireDelay);
     }
 
-    private void Update()
+    private void Fire()
     {
-        HandleInput();
-        Move();
-        //HandleAttack();
-        if (_inputVec.sqrMagnitude < 0.01f && !_isAttacking)
-        {
-            _attackRoutine = StartCoroutine(CoAttack());
-        }
-        UpdateAnimation();
+        if (ArrowPool.Instance == null) return;
+
+        Vector3 spawnPos = firePos != null ? firePos.position : transform.position;
+
+        // 시선 방향(FlipX)에 따라 좌/우 + 곡사 40도
+        Quaternion rot = _sprite.flipX
+            ? Quaternion.Euler(0, 180, 40)
+            : Quaternion.Euler(0, 0, 40);
+
+        ArrowPool.Instance.GetArrow(spawnPos, rot);
     }
 
-    private void HandleInput()
-    {
-        // 공격 중 이면 이동 불가
-        if (_isAttacking)
-        {
-            _inputVec = Vector2.zero;
-            return;
-        }
-
-        // 키보드 입력 (PC 테스트용)
-        float h = Input.GetAxisRaw("Horizontal");
-
-        // 버튼 입력
-        if (btnLeft != null && btnLeft.IsPressed) h = -1f;
-        if (btnRight != null && btnRight.IsPressed) h = 1f;
-        if (btnLeft != null && btnRight != null && btnLeft.IsPressed && btnRight.IsPressed) h = 0f;
-
-        _inputVec = new Vector2(h, 0);
-    }
-
-    private void Move()
-    {
-        transform.Translate(_inputVec * moveSpeed * Time.deltaTime);
-    }
-
-    private void HandleAttack()
-    {
-        // 이미 공격 중이면 중복 실행 방지
-        if (_isAttacking) return;
-
-        // Z키 또는 공격 버튼 플래그 체크
-        if (Input.GetKeyDown(KeyCode.Z) || isAttackButtonPressed)
-        {
-            isAttackButtonPressed = false;
-
-            // 혹시 실행 중인 코루틴이 있다면 정지 (안전장치)
-            if (_attackRoutine != null) StopCoroutine(_attackRoutine);
-
-            // 공격 코루틴 시작
-            _attackRoutine = StartCoroutine(CoAttack());
-        }
-    }
-
-    // 공격 흐름을 제어하는 코루틴
-    private IEnumerator CoAttack()
-    {
-        _isAttacking = true;
-        _inputVec = Vector2.zero; // 즉시 정지
-        _animator.SetTrigger(AnimationKey.Attack);
-
-        yield return _wsFireDelay;
-
-        Fire();
-
-        yield return new WaitForSeconds(0.1f);
-
-        _isAttacking = false;
-        _attackRoutine = null;
-    }
-
-    // 피격 등으로 공격을 강제 취소해야 할 때 호출
-    public void CancelAttack()
-    {
-        if (_attackRoutine != null)
-        {
-            StopCoroutine(_attackRoutine);
-            _attackRoutine = null;
-            _isAttacking = false;
-        }
-    }
 
     private void UpdateAnimation()
     {
-        // 공격 중일 때는 달리기 중지
+        _animator.SetBool(AnimationKey.IsRun, IsMoving);
+
         if (_isAttacking) return;
 
-        bool isMoving = _inputVec.magnitude > 0;
-        _animator.SetBool(AnimationKey.IsRun, isMoving);
-
-        if (_inputVec.x != 0)
-        {
-            _spriteRenderer.flipX = _inputVec.x < 0;
-        }
-    }
-
-    public void OnAttackButtonDown()
-    {
-        isAttackButtonPressed = true;
-    }
-
-    public void Fire()
-    {
-        Vector3 spawnPos = firePos != null ? firePos.position : transform.position;
-
-        Quaternion rotation;
-
-        // 곡사 발사를 위해 위로 30도 회전 좌 우 고려
-        if (_spriteRenderer.flipX)
-        {
-            // 좌
-            rotation = Quaternion.Euler(0, 180, 30);
-        }
-        else
-        {
-            // 우
-            rotation = Quaternion.Euler(0, 0, 30);
-        }
-
-        ArrowPool.Instance.GetArrow(spawnPos, rotation);
+        if (_moveInput.x != 0f)
+            _sprite.flipX = _moveInput.x < 0f;
     }
 }

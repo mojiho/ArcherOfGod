@@ -6,6 +6,7 @@ using UnityEngine;
 public static class AnimationKey
 {
     public static readonly int IsRun = Animator.StringToHash("IsRun");
+    public static readonly int IsAttack = Animator.StringToHash("IsAttack");
     public static readonly int Attack = Animator.StringToHash("Attack");
     public static readonly int Die = Animator.StringToHash("Die");
 }
