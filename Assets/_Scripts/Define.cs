@@ -10,3 +10,12 @@ public static class AnimationKey
     public static readonly int Attack = Animator.StringToHash("Attack");
     public static readonly int Die = Animator.StringToHash("Die");
 }
+
+
+// 스킬 종류 정의
+public enum SkillType
+{
+    TripleShot,
+    PowerShot,
+    ArrowRain
+}

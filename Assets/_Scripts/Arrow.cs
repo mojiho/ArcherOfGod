@@ -7,7 +7,7 @@ using System.Collections;
 public class Arrow : MonoBehaviour
 {
     public float speed = 15f;
-
+    
     private Rigidbody2D _rb;
     private Collider2D _col;
 
