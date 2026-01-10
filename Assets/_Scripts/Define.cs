@@ -12,10 +12,35 @@ public static class AnimationKey
 }
 
 
-// 스킬 종류 정의
 public enum SkillType
 {
-    TripleShot,
-    PowerShot,
-    ArrowRain
+    Normal = 1001,
+    MultiShot = 1002,
+    Desh,
+}
+
+public static class TrajectoryMath
+{
+    /// <summary>
+    /// 대상 위치에 도달하기 위한 초기 속도 벡터를 계산합니다.
+    /// </summary>
+    /// <param name="start">발사 지점</param>
+    /// <param name="target">목표 지점</param>
+    /// <param name="time">체공 시간 (초)</param>
+    /// <param name="gravity">중력값</param>
+    public static Vector3 CalculateLaunchVelocity(Vector3 start, Vector3 target, float time, float gravity)
+    {
+        Vector3 displacement = target - start;
+        // 수평 거리(x축만 고려)
+        Vector3 displacementX = new Vector3(displacement.x, 0, 0);
+
+        float vx = displacementX.magnitude / time;
+        // 수직 속도 공식: (높이 차이 + 0.5 * g * t^2) / t
+        float vy = (displacement.y + 0.5f * gravity * time * time) / time;
+
+        Vector3 velocity = displacementX.normalized * vx;
+        velocity.y = vy;
+
+        return velocity;
+    }
 }

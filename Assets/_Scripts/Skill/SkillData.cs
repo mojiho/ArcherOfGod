@@ -1,10 +1,20 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System;
 
-/* 스킬 데이터를 저장하는 ScriptableObject 클래스 입니다. */
+[Serializable]
+public class SkillDict : SerializableDictionary<SkillType, SkillInfo> { }
 
-[CreateAssetMenu(fileName = "NewSkillData", menuName = "ScriptableObjects/SkillData")]
+[CreateAssetMenu(fileName = "NewSkillData", menuName = "Data/Skill Database")]
 public class SkillData : ScriptableObject
 {
-    public List<SkillInfo> skills = new List<SkillInfo>(); // 여기에 스킬들을 미리 만들어둡니다.
+    public SkillDict skillMap;
+
+    public SkillInfo GetSkill(SkillType type)
+    {
+        if (skillMap.ContainsKey(type))
+        {
+            return skillMap[type];
+        }
+        return null;
+    }
 }

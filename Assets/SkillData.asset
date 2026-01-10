@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f65755e7dfa3ac4419589be920495ea8, type: 3}
+  m_Name: SkillData
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillMap:
+    keys: e9030000
+    values:
+    - skillID: 1001
+      skillName: NormalArrow
+      icon: {fileID: 7504479419409390260, guid: 139896ae9c7105140bf96a66f05e1c40, type: 3}
+      cooldown: 2
+      type: 1001
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1002
+      skillName: MultiShot
+      icon: {fileID: 7504479419409390260, guid: 139896ae9c7105140bf96a66f05e1c40, type: 3}
+      cooldown: 2
+      type: 1002
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11

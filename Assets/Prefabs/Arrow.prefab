@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5165870881072392653}
   - component: {fileID: 1729671407782326172}
   - component: {fileID: 7931954960954535884}
-  - component: {fileID: 7976253358350411118}
+  - component: {fileID: 1472872802133250506}
   m_Layer: 0
   m_Name: Arrow
   m_TagString: Untagged
@@ -109,7 +109,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -155,19 +155,19 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.6444949, y: -0.0004147254}
+  m_Offset: {x: 0.51344967, y: -0.0004147254}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1.42, y: 0.09}
+    oldSize: {x: 1.136, y: 0.072}
     newSize: {x: 1.42, y: 0.09}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.14428186, y: 0.07424014}
+  m_Size: {x: 0.12795472, y: 0.07424014}
   m_EdgeRadius: 0
---- !u!114 &7976253358350411118
+--- !u!114 &1472872802133250506
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -179,4 +179,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 722e2cf4411664646a2e858b6acc75b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Arrow
-  speed: 10

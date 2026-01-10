@@ -12,8 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f65755e7dfa3ac4419589be920495ea8, type: 3}
   m_Name: SkillData
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  skills:
-  - skillName: Triple Shot
-    icon: {fileID: 0}
-    cooldown: 0
-    type: 0
+  skillMap:
+    keys: e90300000000000000000000000000000000000000000000
+    values:
+    - skillID: 1001
+      skillName: NormalArrow
+      icon: {fileID: 0}
+      cooldown: 2
+      type: 1001
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 10

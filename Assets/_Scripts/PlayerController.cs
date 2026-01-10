@@ -2,193 +2,254 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/* 
- * 플레이어 움직임 및 스킬 시스템을 관리하는 메인 컨트롤러 클래스입니다.
- * SkillData 시트를 읽어 실시간 스킬 객체(SkillBase)를 생성하여 관리합니다.
- */
-[RequireComponent(typeof(Animator))]
-[RequireComponent(typeof(SpriteRenderer))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, ISkillCaster
 {
-    [Header("Settings")]
+    [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
-
-    [Header("Mobile Inputs")]
-    [SerializeField] private DirectionButton btnLeft;
-    [SerializeField] private DirectionButton btnRight;
 
     [Header("Attack Settings")]
     [SerializeField] private Transform firePos;
     [SerializeField] private float fireDelay = 0.7f;
+    [SerializeField] private SkillInfo defaultSkillData; // 기본 공격 데이터
 
     [Header("Behavior")]
     [SerializeField] private bool autoFireWhenIdle = true;
 
-    [Header("Skill UI")]
-    [SerializeField] private List<SkillSlotUI> skillSlots;
+    // 내부 컴포넌트
+    private Character _character;
+    private SkillSystem _skillSystem;
 
-    [Header("Skill Configuration")]
-    [SerializeField] private SkillData skillDataSheet;
+    // [핵심] 스킬 전략들을 담아두는 가방 (Strategy Dictionary)
+    private Dictionary<SkillType, SkillStrategy> _skillStrategies;
 
-    // 런타임에 생성된 실제 스킬 객체들의 리스트
-    private List<SkillBase> _skills;
+    // 키 매핑
+    private readonly KeyCode[] _skillKeys = { KeyCode.Z, KeyCode.X, KeyCode.C, KeyCode.V, KeyCode.B };
 
-    // Components
-    private Animator _animator;
-    private SpriteRenderer _sprite;
-
-    // State
+    // 상태 변수
     private Vector2 _moveInput;
     private bool _isAttacking;
-    private bool _attackPressed;
+    private bool _isAutoFiring; // 현재 공격이 자동 사격인지 체크
 
-    // Coroutine / cached waits
     private Coroutine _attackRoutine;
     private WaitForSeconds _wsFireDelay;
-    private static readonly WaitForSeconds WS_ATTACK_END = new WaitForSeconds(0.1f);
 
-    private const float INPUT_DEADZONE = 0.1f;
-    private bool IsMoving => Mathf.Abs(_moveInput.x) >= INPUT_DEADZONE;
-    private bool CanStartAttack => !_isAttacking && !IsMoving;
+    // 상태 확인 프로퍼티 (ISkillCaster 구현용)
+    public bool CanAction => !(_character != null && _character.Health.IsDead);
+
+    // ====================================================
+    // [ISkillCaster 구현] 전략 클래스들이 나를 참조할 때 사용
+    // ====================================================
+    public Transform GetTransform() => transform;
+    public Transform GetFirePos() => firePos != null ? firePos : transform;
+    public GameObject GetGameObject() => gameObject;
 
     private void Awake()
     {
-        _animator = GetComponent<Animator>();
-        _sprite = GetComponent<SpriteRenderer>();
+        _character = GetComponent<Character>();
+        _skillSystem = GetComponent<SkillSystem>();
+
+        // [핵심] 전략 등록 (새로운 스킬이 생기면 여기에 추가만 하면 됨)
+        _skillStrategies = new Dictionary<SkillType, SkillStrategy>
+        {
+            { SkillType.Normal, new NormalSkill() },
+            { SkillType.MultiShot, new MultiShotSkill() }
+            // 예: { SkillType.Dash, new DashSkill() }
+        };
     }
 
     private void Start()
     {
         _wsFireDelay = new WaitForSeconds(fireDelay);
 
-        // 스킬 시트로부터 실시간 객체들 생성 및 UI 연결
-        InitSkills();
+        if (_character != null)
+        {
+            _character.Health.OnDead += HandleDeath;
+        }
+
+        // 기본 공격 데이터 안전장치
+        if (GameManager.Instance != null && GameManager.Instance.skillDatabase != null)
+        {
+            defaultSkillData = GameManager.Instance.skillDatabase.GetSkill(SkillType.Normal);
+        }
     }
 
     private void Update()
     {
+        if (_character.Health.IsDead) return;
+
         ReadMoveInput();
         ApplyMove();
         UpdateAnimation();
 
-        HandleAttackInput();
-        HandleAutoFire();
-
-        UpdateSkillSystem();
+        HandleSkillInput(); // 1순위: 스킬 입력
+        HandleAutoFire();   // 2순위: 자동 사격
     }
 
-    private void InitSkills()
+    // ========================================================================
+    // 1. 입력 및 스킬 처리 섹션
+    // ========================================================================
+
+    private void HandleSkillInput()
     {
-        if (skillDataSheet == null) return;
+        if (!CanAction) return;
 
-        _skills = new List<SkillBase>();
-
-        for (int i = 0; i < skillDataSheet.skills.Count; i++)
+        for (int i = 0; i < _skillKeys.Length; i++)
         {
-            SkillInfo info = skillDataSheet.skills[i];
-            SkillBase skillInstance = null;
-
-            switch (info.type)
+            if (Input.GetKeyDown(_skillKeys[i]))
             {
-                //case SkillType.TripleShot:
-                //    skillInstance = new Skill_TripleShot(this, info);
-                //    break;
-                    // case SkillType.PowerShot: skillInstance = new Skill_PowerShot(this, info); break;
-            }
-
-            if (skillInstance != null)
-            {
-                _skills.Add(skillInstance);
-
-                if (i < skillSlots.Count)
-                {
-                    skillSlots[i].button.image.sprite = info.icon;
-                    int index = i;
-                    skillSlots[i].button.onClick.AddListener(() => TryUseSkill(index));
-                }
+                TryUseSkill(i);
             }
         }
     }
 
-    private void UpdateSkillSystem()
+    // 외부(UI)에서도 호출 가능하도록 public
+    public void TryUseSkill(int slotIndex)
     {
-        if (_skills == null) return;
+        if (_skillSystem == null) return;
+        if (slotIndex >= _skillSystem.myLoadout.Count) return;
 
-        for (int i = 0; i < _skills.Count; i++)
+        // A. 쿨타임 및 사용 가능 여부 체크
+        SkillType type = _skillSystem.myLoadout[slotIndex];
+        if (!_skillSystem.IsSkillReady(type)) return;
+
+        // B. 인터럽트 로직: 자동 사격 중이면 끊고 스킬 발동
+        if (_isAttacking)
         {
-            // 1. 쿨타임 감소
-            _skills[i].UpdateCooldown(Time.deltaTime);
-
-            // 2. UI 갱신 (SkillSlotUI 활용)
-            if (i < skillSlots.Count)
+            if (_isAutoFiring)
             {
-                float current = _skills[i].CurrentCooldown;
-                float max = _skills[i].Cooldown;
-
-                skillSlots[i].cooldownMask.fillAmount = (max > 0) ? current / max : 0;
-                skillSlots[i].cooldownText.text = (current > 0) ? current.ToString("F1") : "";
+                CancelAttackInternal(); // "비켜! 스킬 나간다"
+            }
+            else
+            {
+                return; // "이미 다른 스킬 쓰는 중이야"
             }
         }
+
+        // C. 데이터 가져오기
+        SkillInfo info = GameManager.Instance.skillDatabase.GetSkill(type);
+        if (info == null) return;
+
+        // D. 스킬 실행 (코루틴)
+        StartCoroutine(PlaySkillAction(info));
+
+        // E. 쿨타임 시스템 가동 (UI 갱신)
+        _skillSystem.TriggerCooldown(type, slotIndex);
     }
 
-    private void TryUseSkill(int index)
+    // ISkillCaster 인터페이스 구현
+    public IEnumerator PlaySkillAction(SkillInfo info)
     {
-        if (_skills == null || index >= _skills.Count) return;
+        // 안전장치
+        if (_attackRoutine != null) StopCoroutine(_attackRoutine);
 
-        // 쿨타임 체크 및 공격 상태 확인
-        if (_skills[index].CanUse() && !_isAttacking)
+        _isAttacking = true;
+        _isAutoFiring = false; // "이건 스킬이다" (중요)
+        _attackRoutine = null;
+
+        Transform target = GetTarget(); 
+        if (target != null)
         {
-            StartCoroutine(CoSkillAttack(_skills[index]));
+            _character.Sprite.flipX = target.position.x < transform.position.x;
+        }
+
+        _character.Anim.SetBool(AnimationKey.IsAttack, true);
+
+        yield return new WaitForSeconds(0.1f); // 선딜레이
+
+        // [변경] 직접 쏘지 않고 전략에게 위임
+        UseSkillLogic(info);
+
+        yield return new WaitForSeconds(0.2f); // 후딜레이
+
+        _isAttacking = false;
+        _character.Anim.SetBool(AnimationKey.IsAttack, false);
+    }
+
+    // ========================================================================
+    // 2. 자동 사격 섹션
+    // ========================================================================
+
+    private void HandleAutoFire()
+    {
+        // 공격 중 아님 + 이동 안 함 + 설정 켜짐
+        if (autoFireWhenIdle && !_isAttacking && !IsMoving())
+        {
+            StartAutoAttack();
         }
     }
 
-    private IEnumerator CoSkillAttack(SkillBase skill)
+    private void StartAutoAttack()
+    {
+        if (_attackRoutine != null) StopCoroutine(_attackRoutine);
+        _attackRoutine = StartCoroutine(CoAutoAttack());
+    }
+
+    private IEnumerator CoAutoAttack()
     {
         _isAttacking = true;
-        _moveInput = Vector2.zero;
-        _animator.SetBool(AnimationKey.IsAttack, true);
+        _isAutoFiring = true; // "이건 자동 사격이다" (취소 가능)
 
-        yield return _wsFireDelay;
+        _character.Anim.SetBool(AnimationKey.IsAttack, true);
 
-        // 스킬 로직 실행 및 쿨타임 시작
-        skill.Use();
-        skill.StartCooldown();
+        yield return _wsFireDelay; // 공격 딜레이
 
-        yield return WS_ATTACK_END;
-        FinishAttack();
+        // 대기 중에 스킬로 인해 취소됐는지 체크
+        if (_isAttacking && defaultSkillData != null)
+        {
+            // [변경] Fire() 대신 UseSkillLogic() 사용 (전략 패턴 통일)
+            UseSkillLogic(defaultSkillData);
+        }
+
+        yield return new WaitForSeconds(0.1f);
+
+        _isAttacking = false;
+        _isAutoFiring = false;
+        _attackRoutine = null;
+        _character.Anim.SetBool(AnimationKey.IsAttack, false);
     }
 
-    // 스킬 클래스에서 호출할 공용 발사 함수
-    public void FireSkillArrow(float extraAngle, float speedMultiplier = 1f)
+    // ========================================================================
+    // 3. 스킬 전략 실행 (핵심 로직)
+    // ========================================================================
+
+    private void UseSkillLogic(SkillInfo info)
     {
-        if (ArrowPool.Instance == null) return;
-
-        Vector3 spawnPos = firePos != null ? firePos.position : transform.position;
-        float baseAngle = _sprite.flipX ? 180 - 40 : 40;
-        float finalAngle = _sprite.flipX ? baseAngle - extraAngle : baseAngle + extraAngle;
-
-        Quaternion rot = Quaternion.Euler(0, 0, finalAngle);
-        GameObject arrowObj = ArrowPool.Instance.GetArrow(spawnPos, rot);
-
-        if (speedMultiplier != 1f)
+        // 딕셔너리에 등록된 전략이 있는지 확인
+        if (_skillStrategies.TryGetValue(info.type, out SkillStrategy strategy))
         {
-            Arrow arrow = arrowObj.GetComponent<Arrow>();
-            if (arrow != null) arrow.speed *= speedMultiplier;
+            // "전략아, 내 정보(this) 줄 테니까 대신 쏴줘!" (위임)
+            strategy.Use(this, info);
+        }
+        else
+        {
+            Debug.LogError($"[Player] {info.type} 타입에 해당하는 스킬 클래스가 Dictionary에 없습니다!");
         }
     }
 
-    /* --- 기본 공격 및 이동 로직 --- */
+    // ※ 기존의 Fire(), FireMultiShot() 함수는 모두 삭제되었습니다.
+    // (SkillStrategy 클래스로 이동했기 때문입니다)
+
+    // ========================================================================
+    // 4. 유틸리티 (이동, 애니메이션, 사망)
+    // ========================================================================
+
+    private void CancelAttackInternal()
+    {
+        if (_attackRoutine != null) StopCoroutine(_attackRoutine);
+        _isAttacking = false;
+        _isAutoFiring = false;
+        _attackRoutine = null;
+        _character.Anim.SetBool(AnimationKey.IsAttack, false);
+    }
 
     private void ReadMoveInput()
     {
         float h = Input.GetAxisRaw("Horizontal");
-        if (btnLeft != null && btnLeft.IsPressed) h = -1f;
-        if (btnRight != null && btnRight.IsPressed) h = 1f;
-        if (btnLeft != null && btnRight != null && btnLeft.IsPressed && btnRight.IsPressed) h = 0f;
 
-        if (Mathf.Abs(h) < INPUT_DEADZONE) h = 0f;
+        // 스킬 사용 중이면 이동 불가 (자동 사격 중엔 이동하면 캔슬)
+        if (_isAttacking && !_isAutoFiring) h = 0f;
+        if (_isAutoFiring && h != 0) CancelAttackInternal();
 
-        if (_isAttacking && h != 0f) CancelAttackInternal(true);
         _moveInput = new Vector2(h, 0f);
     }
 
@@ -198,76 +259,33 @@ public class PlayerController : MonoBehaviour
         transform.Translate(_moveInput * moveSpeed * Time.deltaTime);
     }
 
-    private void HandleAttackInput()
-    {
-        bool pressed = Input.GetKeyDown(KeyCode.Z) || _attackPressed;
-        if (!pressed) return;
-
-        _attackPressed = false;
-        if (!CanStartAttack) return;
-        StartAttack();
-    }
-
-    private void HandleAutoFire()
-    {
-        if (!autoFireWhenIdle || !CanStartAttack || _attackRoutine != null) return;
-        StartAttack();
-    }
-
-    private void StartAttack()
-    {
-        StopAttackCoroutineOnly();
-        _attackRoutine = StartCoroutine(CoAttack());
-    }
-
-    private IEnumerator CoAttack()
-    {
-        _isAttacking = true;
-        _moveInput = Vector2.zero;
-        _animator.SetBool(AnimationKey.IsAttack, true);
-
-        yield return _wsFireDelay;
-        if (_isAttacking) Fire();
-
-        yield return WS_ATTACK_END;
-        FinishAttack();
-    }
-
-    private void Fire()
-    {
-        if (ArrowPool.Instance == null) return;
-        Vector3 spawnPos = firePos != null ? firePos.position : transform.position;
-        Quaternion rot = _sprite.flipX ? Quaternion.Euler(0, 180, 40) : Quaternion.Euler(0, 0, 40);
-        ArrowPool.Instance.GetArrow(spawnPos, rot);
-    }
-
-    private void FinishAttack()
-    {
-        _isAttacking = false;
-        _attackRoutine = null;
-        _animator.SetBool(AnimationKey.IsAttack, false);
-    }
-
-    public void CancelAttack() => CancelAttackInternal(false);
-    private void CancelAttackInternal(bool clearQueuedAttack)
-    {
-        StopAttackCoroutineOnly();
-        _isAttacking = false;
-        _animator.SetBool(AnimationKey.IsAttack, false);
-        if (clearQueuedAttack) _attackPressed = false;
-    }
-
-    private void StopAttackCoroutineOnly()
-    {
-        if (_attackRoutine != null) { StopCoroutine(_attackRoutine); _attackRoutine = null; }
-    }
-
     private void UpdateAnimation()
     {
-        _animator.SetBool(AnimationKey.IsRun, IsMoving);
-        if (_isAttacking) return;
-        if (_moveInput.x != 0f) _sprite.flipX = _moveInput.x < 0f;
+        bool isRunning = Mathf.Abs(_moveInput.x) > 0.1f;
+        _character.Anim.SetBool(AnimationKey.IsRun, isRunning);
+        if (!_isAttacking && _moveInput.x != 0f) _character.Sprite.flipX = _moveInput.x < 0f;
     }
 
-    public void OnAttackButtonDown() => _attackPressed = true;
+    private bool IsMoving() => Mathf.Abs(_moveInput.x) > 0.1f;
+
+    private void HandleDeath()
+    {
+        StopAllCoroutines();
+        StartCoroutine(DeathSequenceRoutine());
+    }
+
+    private IEnumerator DeathSequenceRoutine()
+    {
+        _character.Anim.SetTrigger(AnimationKey.Die);
+        var col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+        yield return new WaitForSeconds(2.0f);
+        gameObject.SetActive(false);
+    }
+
+    public Transform GetTarget()
+    {
+        GameObject target = GameObject.FindGameObjectWithTag("Enemy");
+        return target != null ? target.transform : null;
+    }
 }
