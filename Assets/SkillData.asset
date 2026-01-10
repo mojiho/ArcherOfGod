@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SkillData
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   skillMap:
-    keys: e9030000
+    keys: e9030000ea030000eb030000ec030000ed030000ee030000
     values:
     - skillID: 1001
       skillName: NormalArrow
@@ -26,10 +26,46 @@ MonoBehaviour:
       damage: 11
     - skillID: 1002
       skillName: MultiShot
-      icon: {fileID: 7504479419409390260, guid: 139896ae9c7105140bf96a66f05e1c40, type: 3}
-      cooldown: 2
+      icon: {fileID: 3120459194472711540, guid: f74547b17045ca249b3758b6ed9bc68a, type: 3}
+      cooldown: 5
       type: 1002
       description: 
       arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
       projectileSpeed: 15
       damage: 11
+    - skillID: 1003
+      skillName: DirectShot
+      icon: {fileID: 7504479419409390260, guid: 139896ae9c7105140bf96a66f05e1c40, type: 3}
+      cooldown: 6
+      type: 1003
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1004
+      skillName: Dash
+      icon: {fileID: -6181022919547679324, guid: 33b75b278d79d0c40941250c42d16e69, type: 3}
+      cooldown: 2
+      type: 1004
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 0
+      damage: 0
+    - skillID: 1005
+      skillName: JumpShot
+      icon: {fileID: -2683012197043878756, guid: 449b96c9fa914c645a2d602f85dd4e5c, type: 3}
+      cooldown: 4
+      type: 1005
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1006
+      skillName: ClusterShot
+      icon: {fileID: -9001934932777662338, guid: 976d40449908b1c439451ba6b1fadb9e, type: 3}
+      cooldown: 20
+      type: 1006
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 491963dd683f5ac4ca91a1a96d089147, type: 3}
+      projectileSpeed: 15
+      damage: 20

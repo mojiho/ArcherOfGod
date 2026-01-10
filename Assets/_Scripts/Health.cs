@@ -12,8 +12,8 @@ public interface IDamageable
 public class Health : MonoBehaviour, IDamageable
 {
     [Header("Stats")]
-    [SerializeField] private int maxHp = 111;
-    private int _currentHp;
+    [SerializeField] public int maxHp = 111;
+    public int _currentHp;
     private bool _isDead;
 
     public event Action<int, int> OnHpChanged;      // (현재 HP, 최대 HP)

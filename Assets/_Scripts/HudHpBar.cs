@@ -3,32 +3,37 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /*
-*   HP Bar UI 를 담당하는 스크립트 입니다.
+* GameManager가 캐릭터를 생성한 직후에 연결해 줍니다.
 */
 public class HudHpBar : MonoBehaviour
 {
     [SerializeField] private Slider hpSlider;
-    [SerializeField] private bool isPlayer;
     public TextMeshProUGUI text_hp;
+
+    // [변경] isPlayer 불필요 (매니저가 알아서 넣어줌)
 
     private Character _targetCharacter;
 
-    private void Start()
+    // Start() 제거! (매니저가 Setup 호출할 때까지 대기)
+
+    // [추가] 외부에서 캐릭터를 연결해 주는 함수
+    public void Setup(Character target)
     {
-        if (isPlayer)
+        // 재시작 시 기존 연결 끊기 (안전장치)
+        if (_targetCharacter != null)
         {
-            _targetCharacter = GameManager.Instance.player.GetComponent<Character>();
+            _targetCharacter.Health.OnHpChanged -= UpdateHpUI;
         }
-        else
-        {
-            GameObject enemyObj = GameObject.FindGameObjectWithTag("Enemy");
-            if (enemyObj != null) _targetCharacter = enemyObj.GetComponent<Character>();
-        }
+
+        _targetCharacter = target;
 
         if (_targetCharacter != null)
         {
+            // 이벤트 구독
             _targetCharacter.Health.OnHpChanged += UpdateHpUI;
-            UpdateHpUI(111, 111);
+
+            // 초기 UI 갱신 (현재 체력으로)
+            UpdateHpUI(_targetCharacter.Health._currentHp, _targetCharacter.Health.maxHp);
         }
     }
 
@@ -36,8 +41,14 @@ public class HudHpBar : MonoBehaviour
     {
         if (hpSlider != null)
         {
-            text_hp.text = current.ToString();
-            hpSlider.value = (float)current / max;
+            // 0으로 나누기 방지
+            float maxFloat = max > 0 ? (float)max : 1f;
+            hpSlider.value = current / maxFloat;
+        }
+
+        if (text_hp != null)
+        {
+            text_hp.text = $"{current}";
         }
     }
 

@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Ground
   - Enemy
+  - Arrow
+  - InvisibleWall
   layers:
   - Default
   - TransparentFX
@@ -13,9 +15,9 @@ TagManager:
   - 
   - Water
   - UI
-  - 
-  - 
-  - 
+  - Player
+  - Arrow
+  - InvisibleWall
   - 
   - 
   - 

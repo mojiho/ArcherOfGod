@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SkillData
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   skillMap:
-    keys: e90300000000000000000000000000000000000000000000
+    keys: e9030000ea030000eb030000ec030000ed030000ee030000
     values:
     - skillID: 1001
       skillName: NormalArrow
@@ -23,4 +23,49 @@ MonoBehaviour:
       description: 
       arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
       projectileSpeed: 15
-      damage: 10
+      damage: 11
+    - skillID: 1002
+      skillName: MultiShot
+      icon: {fileID: 0}
+      cooldown: 2
+      type: 1002
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1003
+      skillName: DirectShot
+      icon: {fileID: 0}
+      cooldown: 5
+      type: 1003
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1004
+      skillName: Dash
+      icon: {fileID: 0}
+      cooldown: 3
+      type: 1004
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 0
+      damage: 0
+    - skillID: 1005
+      skillName: JumpShot
+      icon: {fileID: 0}
+      cooldown: 2
+      type: 1002
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 11
+    - skillID: 1006
+      skillName: ClusterShot
+      icon: {fileID: 0}
+      cooldown: 12
+      type: 1002
+      description: 
+      arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+      projectileSpeed: 15
+      damage: 25

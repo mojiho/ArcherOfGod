@@ -7,41 +7,46 @@ public class SkillSystem : MonoBehaviour
 {
     [Header("Equipped Skills (Loadout)")]
     public List<SkillType> myLoadout = new List<SkillType>();
+
     public event Action<int, float> OnCooldownChanged;
-    public event Action<List<SkillType>> OnInitialize;
 
-    private HashSet<SkillType> _activeCooldowns = new HashSet<SkillType>();
+    private HashSet<int> _activeSlotCooldowns = new HashSet<int>();
 
-    public bool IsSkillReady(SkillType type)
+    public bool IsSkillReady(int slotIndex)
     {
-        if (!myLoadout.Contains(type)) return false;
-        return !_activeCooldowns.Contains(type);
+        if (slotIndex < 0 || slotIndex >= myLoadout.Count) return false;
+
+        return !_activeSlotCooldowns.Contains(slotIndex);
     }
 
-    public void TriggerCooldown(SkillType type, int slotIndex)
+    public void TriggerCooldown(int slotIndex)
     {
+        if (slotIndex < 0 || slotIndex >= myLoadout.Count) return;
+
+        SkillType type = myLoadout[slotIndex];
         SkillInfo info = GameManager.Instance.skillDatabase.GetSkill(type);
 
         if (info != null && info.cooldown > 0)
         {
-            StartCoroutine(CooldownRoutine(type, slotIndex, info.cooldown));
+            StartCoroutine(CooldownRoutine(slotIndex, info.cooldown));
         }
     }
 
-    private IEnumerator CooldownRoutine(SkillType type, int index, float duration)
+    private IEnumerator CooldownRoutine(int slotIndex, float duration)
     {
-        _activeCooldowns.Add(type);
+        _activeSlotCooldowns.Add(slotIndex); 
 
         float timer = duration;
         while (timer > 0)
         {
             timer -= Time.deltaTime;
             float ratio = timer / duration;
-            OnCooldownChanged?.Invoke(index, ratio);
+            OnCooldownChanged?.Invoke(slotIndex, ratio);
 
             yield return null;
         }
-        _activeCooldowns.Remove(type);
-        OnCooldownChanged?.Invoke(index, 0f);
+
+        _activeSlotCooldowns.Remove(slotIndex); 
+        OnCooldownChanged?.Invoke(slotIndex, 0f);
     }
 }

@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8923525343059387921}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: GameObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -47,9 +47,12 @@ GameObject:
   - component: {fileID: 1292388019470740966}
   - component: {fileID: 921399545049446542}
   - component: {fileID: 5225864211807142459}
-  m_Layer: 0
+  - component: {fileID: 5939186692910554711}
+  - component: {fileID: 8269361293737865599}
+  - component: {fileID: 1375010907611720369}
+  m_Layer: 6
   m_Name: Archer
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -63,7 +66,7 @@ Transform:
   m_GameObject: {fileID: 6167880023029087768}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.778, y: -0.274, z: 0}
+  m_LocalPosition: {x: -4.778, y: -0.71, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -226,10 +229,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 5
-  btnLeft: {fileID: 0}
-  btnRight: {fileID: 0}
   firePos: {fileID: 8923525343059387921}
   fireDelay: 0.7
+  defaultSkillData:
+    skillID: 1001
+    skillName: NormalArrow
+    icon: {fileID: 0}
+    cooldown: 0
+    type: 1001
+    description: 
+    arrowPrefab: {fileID: 2649969561415509388, guid: 0699a1df79238f44aad875d4b5ef1b30, type: 3}
+    projectileSpeed: 10
+    damage: 10
+  autoFireWhenIdle: 1
 --- !u!70 &921399545049446542
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -283,14 +295,52 @@ Rigidbody2D:
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_GravityScale: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 8bd33bdfd00b6f34899db10b92d681de, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
+--- !u!114 &5939186692910554711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6167880023029087768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9496574250912c44b91b0222f20a8782, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Character
+--- !u!114 &8269361293737865599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6167880023029087768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c31c1ca4dff0e2a4aafda00036330568, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  maxHp: 111
+--- !u!114 &1375010907611720369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6167880023029087768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f2e185a6ade464c8163f6293d85cc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillSystem
+  myLoadout: ec030000ed030000ea030000eb030000ee030000

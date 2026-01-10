@@ -2,27 +2,25 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[RequireComponent(typeof(Rigidbody2D))] // 적도 물리 필수
 public class EnemyController : MonoBehaviour, ISkillCaster
 {
     [SerializeField] private Transform firePos;
+    [SerializeField] private float moveSpeed = 2f; // 이동 속도 추가
 
     private SkillInfo _normalData;
     private bool _isActing;
     private Character _character;
+    private Rigidbody2D _rb; // [추가]
 
-    // [추가] 전략 보관함
     private Dictionary<SkillType, SkillStrategy> _skillStrategies;
 
     public bool CanAction => !_isActing && !(_character != null && _character.Health.IsDead);
 
-    // ============================================
-    // [ISkillCaster 구현]
-    // ============================================
     public Transform GetTransform() => transform;
     public Transform GetFirePos() => firePos != null ? firePos : transform;
     public GameObject GetGameObject() => gameObject;
 
-    // [핵심] 적의 타겟은 "플레이어"입니다.
     public Transform GetTarget()
     {
         if (GameManager.Instance.player != null)
@@ -33,33 +31,29 @@ public class EnemyController : MonoBehaviour, ISkillCaster
     private void Awake()
     {
         _character = GetComponent<Character>();
+        _rb = GetComponent<Rigidbody2D>(); // [추가]
 
-        // 전략 등록 (적도 이제 똑같은 NormalSkill을 씁니다!)
         _skillStrategies = new Dictionary<SkillType, SkillStrategy>
         {
             { SkillType.Normal, new NormalSkill() }
-            // 적이 강해지면 여기에 MultiShot 추가 가능
         };
     }
 
     private void Start()
     {
-        if (_character != null)
-        {
-            _character.Health.OnDead += HandleDeath;
-        }
-
+        if (_character != null) _character.Health.OnDead += HandleDeath;
         if (GameManager.Instance != null && GameManager.Instance.skillDatabase != null)
         {
             _normalData = GameManager.Instance.skillDatabase.GetSkill(SkillType.Normal);
         }
-
         StartCoroutine(AICycleRoutine());
     }
 
     private void HandleDeath()
     {
         StopAllCoroutines();
+        // 사망 시 미끄러짐 방지
+        _rb.linearVelocity = Vector2.zero;
         StartCoroutine(DeathSequenceRoutine());
     }
 
@@ -74,16 +68,17 @@ public class EnemyController : MonoBehaviour, ISkillCaster
 
     private IEnumerator AICycleRoutine()
     {
-        // 플레이어가 생길 때까지 대기
         while (GameManager.Instance.player == null) yield return null;
 
         while (!_character.Health.IsDead)
         {
+            // [변경] 물리 기반 이동 실행
             yield return StartCoroutine(MoveState());
 
-            // 플레이어가 살아있고, 데이터가 있으면 공격
-            bool isPlayerAlive = !GameManager.Instance.player.GetComponent<Character>().Health.IsDead;
+            // 공격 시 멈춤
+            _rb.linearVelocity = Vector2.zero;
 
+            bool isPlayerAlive = !GameManager.Instance.player.GetComponent<Character>().Health.IsDead;
             if (!_character.Health.IsDead && isPlayerAlive && _normalData != null)
             {
                 yield return StartCoroutine(PlaySkillAction(_normalData));
@@ -93,10 +88,38 @@ public class EnemyController : MonoBehaviour, ISkillCaster
         }
     }
 
+    // [핵심 변경] 물리 속도로 이동 구현
     private IEnumerator MoveState()
     {
-        // 이동 로직 (추후 구현)
-        yield return null;
+        Transform target = GetTarget();
+        if (target == null) yield break;
+
+        _character.Anim.SetBool(AnimationKey.IsRun, true);
+
+        float moveTime = 0f;
+        float duration = 1.0f; // 1초간 추적
+
+        while (moveTime < duration)
+        {
+            if (_character.Health.IsDead) break;
+
+            // X축 방향 결정 (1 or -1)
+            float dirX = (target.position.x > transform.position.x) ? 1f : -1f;
+
+            // 바라보는 방향
+            _character.Sprite.flipX = (dirX < 0);
+
+            // [수정] Translate 대신 linearVelocity 사용 -> 벽 충돌 부드러움
+            _rb.linearVelocity = new Vector2(dirX * moveSpeed, _rb.linearVelocity.y);
+
+            moveTime += Time.deltaTime;
+            // 물리 업데이트 대기를 위해 FixedUpdate 타이밍에 맞추거나 null 대기
+            yield return null;
+        }
+
+        // 이동 끝, 멈춤
+        _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
+        _character.Anim.SetBool(AnimationKey.IsRun, false);
     }
 
     public IEnumerator PlaySkillAction(SkillInfo info)
@@ -105,36 +128,27 @@ public class EnemyController : MonoBehaviour, ISkillCaster
 
         _isActing = true;
 
-        // 공격 전 플레이어 바라보기 (Flip)
+        // 공격 중엔 확실히 멈춤
+        _rb.linearVelocity = Vector2.zero;
+
         Transform target = GetTarget();
         if (target != null)
         {
-            if (target.position.x > transform.position.x)
-                _character.Sprite.flipX = false; // 오른쪽
-            else
-                _character.Sprite.flipX = true;  // 왼쪽
+            _character.Sprite.flipX = target.position.x < transform.position.x;
         }
 
         _character.Anim.SetBool(AnimationKey.IsAttack, true);
-        yield return new WaitForSeconds(0.7f); // 선딜레이
-
-        // [변경] 전략 패턴 실행! (UseSkillLogic 호출)
+        yield return new WaitForSeconds(0.7f);
         UseSkillLogic(info);
+        yield return new WaitForSeconds(0.1f);
 
-        yield return new WaitForSeconds(0.1f); // 후딜레이
         _character.Anim.SetBool(AnimationKey.IsAttack, false);
         _isActing = false;
     }
 
-    // 전략 실행 함수
     private void UseSkillLogic(SkillInfo info)
     {
         if (_skillStrategies.TryGetValue(info.type, out SkillStrategy strategy))
-        {
-            // "내 정보(this) 줄 테니까 대신 쏴줘"
             strategy.Use(this, info);
-        }
     }
-
-    // 기존의 Fire 함수는 이제 필요 없어서 삭제했습니다.
 }

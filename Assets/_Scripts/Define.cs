@@ -16,7 +16,18 @@ public enum SkillType
 {
     Normal = 1001,
     MultiShot = 1002,
-    Desh,
+    DirectShot = 1003, // 직사 (Sniper)
+    Dash = 1004,       // 대쉬 (이동)
+    JumpShot = 1005,   // 점프샷 (백스텝 사격)
+    ClusterShot = 1006  // 방사포 (360도)
+}
+
+public enum GameState
+{
+    Ready,      // 대기 (시작 버튼 누르기 전)
+    Countdown,  // 3, 2, 1
+    Playing,    // 게임 중 (시간 흐름)
+    GameOver    // 결과 화면
 }
 
 public static class TrajectoryMath
