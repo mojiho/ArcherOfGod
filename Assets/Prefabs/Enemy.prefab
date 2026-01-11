@@ -49,6 +49,7 @@ GameObject:
   - component: {fileID: 8298071041694230242}
   - component: {fileID: 4227870510663317614}
   - component: {fileID: 9091720113066781332}
+  - component: {fileID: -550641362829631438}
   m_Layer: 6
   m_Name: Enemy
   m_TagString: Enemy
@@ -292,6 +293,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   firePos: {fileID: 2897645956026680381}
+  moveSpeed: 5
+  jumpHeight: 2.5
+  jumpBackDistance: 3
 --- !u!114 &4227870510663317614
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -317,3 +321,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   maxHp: 111
+  _currentHp: 0
+--- !u!114 &-550641362829631438
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120439117587423381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f2e185a6ade464c8163f6293d85cc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillSystem
+  myLoadout: e9030000ec030000ed030000ea030000eb030000ee030000

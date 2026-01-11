@@ -45,8 +45,9 @@ public class ClusterArrow : Arrow
     {
         if (!isLaunched) return;
 
-        // 내 몸체는 숨김 (터졌으니까)
-        // (이펙트가 있다면 여기서 Instantiate(explosionEffect, ...))
+        GameObject expFX = GameManager.Instance.skillDatabase.skillEffectMap["Explosion"];
+        if (expFX != null && EffectPool.Instance != null)
+            EffectPool.Instance.PlayEffect(expFX, transform.position, Quaternion.identity);
 
         if (ArrowPool.Instance != null && subArrowPrefab != null)
         {

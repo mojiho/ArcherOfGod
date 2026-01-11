@@ -28,6 +28,8 @@ public class SkillSystem : MonoBehaviour
     {
         if (slotIndex < 0 || slotIndex >= myLoadout.Count) return;
 
+        if (GameManager.Instance == null || GameManager.Instance.skillDatabase == null) return;
+
         SkillType type = myLoadout[slotIndex];
         SkillInfo info = GameManager.Instance.skillDatabase.GetSkill(type);
 

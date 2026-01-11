@@ -70,7 +70,7 @@ public class GameManager : MonoBehaviour
         _currentTime = gameDuration;
 
         if (timerText) timerText.text = $"{_currentTime:F0}";
-        if (centerText) centerText.text = "Ready?";
+        if (centerText) centerText.gameObject.SetActive(false);
 
         if (restartButton) restartButton.SetActive(false);
         if (startButton) startButton.SetActive(true);
@@ -87,7 +87,6 @@ public class GameManager : MonoBehaviour
     public void OnClickRestart()
     {
         InitGame();
-        // 바로 시작하고 싶으면 OnClickStartGame(); 호출
     }
 
     private IEnumerator GameFlowRoutine()
@@ -97,6 +96,7 @@ public class GameManager : MonoBehaviour
         if (centerText) centerText.gameObject.SetActive(true);
         _currentState = GameState.Countdown;
 
+        centerText.color = Color.white;
         string[] counts = { "3", "2", "1", "BATTLE!" };
         foreach (var count in counts)
         {
@@ -148,21 +148,34 @@ public class GameManager : MonoBehaviour
     private void OnGameOver(string message, Color color)
     {
         if (_currentState == GameState.GameOver) return;
-
         _currentState = GameState.GameOver;
+
+        StopCharacter(player);
+        StopCharacter(enemy);
 
         if (centerText)
         {
+            if (pannel_blackOut) pannel_blackOut.gameObject.SetActive(true);
             centerText.text = message;
             centerText.color = color;
             centerText.gameObject.SetActive(true);
         }
 
         if (restartButton) restartButton.SetActive(true);
-
-        // (옵션) 게임이 끝났으니 캐릭터들 멈추게 하거나 무적으로 만들기
-        Time.timeScale = 0; // 시간을 멈춤
     }
+
+    private void StopCharacter(GameObject target)
+    {
+        if (target == null) return;
+
+        // PlayerController 또는 EnemyController를 찾아 강제 종료 루틴을 실행합니다.
+        var playerCtrl = target.GetComponent<PlayerController>();
+        if (playerCtrl != null) playerCtrl.ForceGameOver();
+
+        var enemyCtrl = target.GetComponent<EnemyController>();
+        if (enemyCtrl != null) enemyCtrl.ForceGameOver();
+    }
+
 
     private void UpdateTimerUI()
     {
@@ -170,7 +183,6 @@ public class GameManager : MonoBehaviour
         {
             timerText.text = $"{Mathf.Max(0, _currentTime):F0}";
 
-            // 시간 얼마 안 남으면 빨간색 경고
             if (_currentTime <= 10f) timerText.color = Color.red;
             else timerText.color = Color.white;
         }

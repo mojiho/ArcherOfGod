@@ -17,16 +17,14 @@ public class ArrowPool : MonoBehaviour
             return;
         }
         Instance = this;
-        _tr = transform;
+        _tr = transform; 
     }
 
 
-    // 특정 프리팹에 해당하는 화살을 풀에서 가져옵니다.
     public GameObject GetArrow(GameObject prefab, Vector3 position, Quaternion rotation)
     {
         if (prefab == null) return null;
 
-        // 해당 프리팹의 풀이 없다면 새로 생성
         if (!_poolDictionary.ContainsKey(prefab))
         {
             _poolDictionary.Add(prefab, new Queue<GameObject>());
@@ -35,23 +33,23 @@ public class ArrowPool : MonoBehaviour
         Queue<GameObject> queue = _poolDictionary[prefab];
         GameObject obj;
 
-        // 풀에 여유가 있으면 꺼내고, 없으면 새로 생성
         if (queue.Count > 0)
         {
             obj = queue.Dequeue();
+            obj.transform.SetParent(_tr);
         }
         else
         {
-            obj = Instantiate(prefab, _tr);
+            obj = Instantiate(prefab, position, rotation, _tr);
         }
 
         obj.transform.SetPositionAndRotation(position, rotation);
+        obj.transform.localScale = Vector3.one;
         obj.SetActive(true);
 
         return obj;
     }
 
-    // 화살을 다시 해당 프리팹 풀로 반환합니다.
     public void ReturnArrow(GameObject prefab, GameObject instance)
     {
         if (instance == null || prefab == null) return;
@@ -59,7 +57,6 @@ public class ArrowPool : MonoBehaviour
         instance.SetActive(false);
         instance.transform.SetParent(_tr);
 
-        // 해당 프리팹의 풀이 있는지 확인 후 반환
         if (!_poolDictionary.ContainsKey(prefab))
         {
             _poolDictionary.Add(prefab, new Queue<GameObject>());

@@ -1,5 +1,5 @@
 using UnityEngine;
-
+using System.Collections;
 /* 
  * 스킬 전략 패턴의 기본 클래스입니다.
  * 각 스킬별로 구체적인 동작을 구현합니다.
@@ -10,7 +10,7 @@ public abstract class SkillStrategy
 }
 
 public class NormalSkill : SkillStrategy
-{ 
+{
     public override void Use(ISkillCaster caster, SkillInfo info)
     {
         if (ArrowPool.Instance == null) return;
@@ -21,7 +21,7 @@ public class NormalSkill : SkillStrategy
         if (target != null)
         {
             Vector3 targetPos = target.position + Vector3.up * 0.5f;
-            launchVelocity = TrajectoryMath.CalculateLaunchVelocity(spawnPos, targetPos, 1.0f, gravity);
+            launchVelocity = TrajectoryMath.CalculateLaunchVelocity(spawnPos, targetPos, 1.5f, gravity);
             float rotationZ = (target.position.x < caster.GetTransform().position.x) ? -5f : 5f;
             launchVelocity = Quaternion.Euler(0, 0, rotationZ) * launchVelocity;
         }
@@ -36,10 +36,66 @@ public class NormalSkill : SkillStrategy
 }
 
 public class MultiShotSkill : SkillStrategy
-{ 
+{
     public override void Use(ISkillCaster caster, SkillInfo info)
     {
-        new MultiShotSkill().Use(caster, info);
+
+        MonoBehaviour mono = caster.GetGameObject().GetComponent<MonoBehaviour>();
+        if (mono != null)
+        {
+            mono.StartCoroutine(ExecuteMultiShot(caster, info));
+        }
+    }
+
+    private IEnumerator ExecuteMultiShot(ISkillCaster caster, SkillInfo info)
+    {
+        int shotCount = 3;
+        float interval = 0.12f;
+
+        for (int i = 0; i < shotCount; i++)
+        {
+            if (caster == null || caster.GetGameObject() == null) yield break;
+
+            FireSingleArrow(caster, info);
+
+            yield return new WaitForSeconds(interval);
+        }
+    }
+
+    private void FireSingleArrow(ISkillCaster caster, SkillInfo info)
+    {
+        if (ArrowPool.Instance == null) return;
+
+        Vector3 spawnPos = caster.GetFirePos().position;
+        Transform target = caster.GetTarget();
+        float gravity = 9.81f;
+        Vector3 launchVelocity;
+
+        GameObject multiFX = GameManager.Instance.skillDatabase.skillEffectMap["multi"];
+        if (multiFX != null && EffectPool.Instance != null)
+            EffectPool.Instance.PlayEffect(multiFX, caster.GetFirePos().position, caster.GetTransform().rotation);
+
+        if (target != null)
+        {
+            Vector3 highTargetPos = target.position + Vector3.up * 1.5f;
+
+            launchVelocity = TrajectoryMath.CalculateLaunchVelocity(spawnPos, highTargetPos, 1.5f, gravity);
+
+            float spread = Random.Range(-4f, 4f);
+            launchVelocity = Quaternion.Euler(0, 0, spread) * launchVelocity;
+        }
+        else
+        {
+            Vector3 dir = caster.GetTransform().localScale.x > 0 ? new Vector3(1, 1, 0) : new Vector3(-1, 1, 0);
+            launchVelocity = dir.normalized * 18f;
+        }
+
+        GameObject arrowObj = ArrowPool.Instance.GetArrow(info.arrowPrefab, spawnPos, Quaternion.identity);
+        if (arrowObj != null)
+        {
+            arrowObj.GetComponent<Arrow>().Launch(info, info.arrowPrefab, launchVelocity, caster.GetGameObject());
+        }
+
     }
 }
 
@@ -55,6 +111,10 @@ public class DirectShotSkill : SkillStrategy
         float speed = 10f;
 
         Vector3 launchVelocity;
+
+        GameObject directFX = GameManager.Instance.skillDatabase.skillEffectMap["Direct"];
+        if (directFX != null && EffectPool.Instance != null)
+            EffectPool.Instance.PlayEffect(directFX, caster.GetTransform().position, Quaternion.identity);
 
         if (target != null)
         {
@@ -81,9 +141,6 @@ public class DirectShotSkill : SkillStrategy
     }
 }
 
-// ========================================================================
-// [수정] 대쉬 (Dash) - 이동 중인 방향으로 돌진 + 이동 안됨 수정
-// ========================================================================
 public class DashSkill : SkillStrategy
 {
     public override void Use(ISkillCaster caster, SkillInfo info)
@@ -91,12 +148,9 @@ public class DashSkill : SkillStrategy
         Rigidbody2D rb = caster.GetGameObject().GetComponent<Rigidbody2D>();
         if (rb == null) return;
 
-        float dirX = 0f;
-        if (Mathf.Abs(rb.linearVelocity.x) > 0.1f)
-        {
-            dirX = Mathf.Sign(rb.linearVelocity.x);
-        }
-        else
+        float dirX = Input.GetAxisRaw("Horizontal");
+
+        if (Mathf.Abs(dirX) < 0.1f)
         {
             dirX = caster.GetTransform().localScale.x > 0 ? 1f : -1f;
         }
@@ -107,8 +161,9 @@ public class DashSkill : SkillStrategy
             player.StartDashPhysics();
         }
 
-        rb.linearVelocity = new Vector2(0, rb.linearVelocity.y); 
-        rb.AddForce(new Vector2(dirX * 15f, 0), ForceMode2D.Impulse);
+        rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+
+        rb.AddForce(new Vector2(dirX * 25f, 0), ForceMode2D.Impulse);
     }
 }
 
@@ -116,10 +171,13 @@ public class JumpShotSkill : SkillStrategy
 {
     public override void Use(ISkillCaster caster, SkillInfo info)
     {
-        PlayerController player = caster as PlayerController;
-        if (player != null)
+        if (caster is PlayerController player)
         {
             player.StartJumpShotSequence(info);
+        }
+        else if (caster is EnemyController enemy)
+        {
+            enemy.StartJumpShotSequence(info);
         }
     }
 }

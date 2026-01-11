@@ -69,3 +69,16 @@ MonoBehaviour:
       arrowPrefab: {fileID: 2649969561415509388, guid: 491963dd683f5ac4ca91a1a96d089147, type: 3}
       projectileSpeed: 15
       damage: 20
+  skillEffectMap:
+    keys:
+    - Hit
+    - Explosion
+    - Jump
+    - multi
+    - Direct
+    values:
+    - {fileID: 8748687995501502678, guid: 62334a566bbfe3945bc7bd0c02ca1c9e, type: 3}
+    - {fileID: 2398608829508964987, guid: f387ac791007951459ed6a93dfa675bf, type: 3}
+    - {fileID: 2441235758932010370, guid: 7de46a9a0a26eaa4599a2113dbc7ea38, type: 3}
+    - {fileID: 5433996496088036519, guid: 18d69cc11ae74294aac3f0c1b92d192d, type: 3}
+    - {fileID: 316058135033991530, guid: 40a4f83415f30d14496ed106a10de339, type: 3}

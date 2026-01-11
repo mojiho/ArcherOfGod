@@ -11,8 +11,10 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float jumpShotPower = 1f;
-    private bool _isDashing = false; 
+    [SerializeField] private float jumpHeight = 2.5f;
+    [SerializeField] private float jumpBackDistance = 3.0f;
+
+    private bool _isDashing = false;    
     private bool _isJumping = false; 
 
     [Header("Attack Settings")]
@@ -63,7 +65,16 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     private void Start()
     {
         _wsFireDelay = new WaitForSeconds(fireDelay);
-        if (_character != null) _character.Health.OnDead += HandleDeath;
+        if (_character != null) _character.Health.OnDead += ForceGameOver;
+
+        if (_skillSystem != null)
+        {
+            for (int i = 0; i < _skillSystem.myLoadout.Count; i++)
+            {
+                _skillSystem.TriggerCooldown(i);
+            }
+        }
+
         if (GameManager.Instance != null && GameManager.Instance.skillDatabase != null)
             defaultSkillData = GameManager.Instance.skillDatabase.GetSkill(SkillType.Normal);
     }
@@ -92,8 +103,15 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     private void ReadMoveInput()
     {
         float h = Input.GetAxisRaw("Horizontal");
+
+        if (h == 0 && UIManager.Instance != null)
+        {
+            h = UIManager.Instance.GetHorizontalInput();
+        }
+
         if (_isAttacking && !_isAutoFiring) h = 0f;
         if (_isAutoFiring && h != 0) CancelAttackInternal();
+
         _moveInput = new Vector2(h, 0f);
     }
 
@@ -101,17 +119,22 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     {
         if (_isDashing) return;
 
-        float currentSpeed = _isJumping ? moveSpeed * 0.3f : moveSpeed;
+        if (_isJumping || _isAttacking)
+        {
+            _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
+            return;
+        }
 
         if (_moveInput.x != 0)
         {
-            _rb.linearVelocity = new Vector2(_moveInput.x * currentSpeed, _rb.linearVelocity.y);
+            _rb.linearVelocity = new Vector2(_moveInput.x * moveSpeed, _rb.linearVelocity.y);
         }
         else
         {
             _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
         }
     }
+
     public void StartDashPhysics()
     {
         StartCoroutine(DashRoutine());
@@ -141,17 +164,23 @@ public class PlayerController : MonoBehaviour, ISkillCaster
         _isAttacking = true;
         _isAutoFiring = false;
 
-        _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0);
-        _rb.AddForce(Vector2.up * jumpShotPower, ForceMode2D.Impulse);
+        GameObject jumpFX = GameManager.Instance.skillDatabase.skillEffectMap["Jump"];
+        if (jumpFX != null && EffectPool.Instance != null)
+            EffectPool.Instance.PlayEffect(jumpFX, transform.position, Quaternion.identity);
 
-        float rotateDuration = 0.01f;
+        float gravity = Physics2D.gravity.magnitude * _rb.gravityScale;
+        float jumpVelocity = Mathf.Sqrt(2 * gravity * jumpHeight);
+
+        float backDir = _character.Sprite.flipX ? 1f : -1f;
+
+        float hangTime = 2f * (jumpVelocity / gravity);
+        float horizontalVelocity = (jumpBackDistance / hangTime) * backDir;
+
+        _rb.linearVelocity = new Vector2(horizontalVelocity, jumpVelocity);
+
+        float rotateDuration = 0.5f;
         float elapsed = 0f;
-        float startZ = 0f;
-
-        yield return new WaitForSeconds(0.1f);
-
         bool fired = false;
-
         Transform visual = _character.Sprite.transform;
 
         while (elapsed < rotateDuration)
@@ -159,9 +188,7 @@ public class PlayerController : MonoBehaviour, ISkillCaster
             elapsed += Time.deltaTime;
             float t = elapsed / rotateDuration;
 
-            // Z축 회전 (0 -> 360)
-            float z = Mathf.Lerp(0, 360, t);
-            visual.localRotation = Quaternion.Euler(0, 0, z);
+            visual.localRotation = Quaternion.Euler(0, 0, Mathf.Lerp(0, 360, t));
 
             if (!fired && t >= 0.5f)
             {
@@ -171,7 +198,7 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
             yield return null;
         }
-        visual.localRotation = Quaternion.identity; 
+        visual.localRotation = Quaternion.identity;
 
         while (!IsGrounded())
         {
@@ -182,19 +209,26 @@ public class PlayerController : MonoBehaviour, ISkillCaster
         _isAttacking = false;
     }
 
-
     private void FireSkillArrow(SkillInfo info)
     {
         if (ArrowPool.Instance == null) return;
 
         Vector3 spawnPos = firePos.position;
         Transform target = GetTarget();
-        Vector3 dir;
+        float gravity = 9.81f;
+        Vector3 launchVelocity;
 
         if (target != null)
-            dir = (target.position - spawnPos).normalized;
+        {
+
+            Vector3 targetPos = target.position + Vector3.up * 0.8f;
+            launchVelocity = TrajectoryMath.CalculateLaunchVelocity(spawnPos, targetPos, 2f, gravity);
+        }
         else
-            dir = transform.localScale.x > 0 ? new Vector3(1, -0.5f, 0).normalized : new Vector3(-1, -0.5f, 0).normalized;
+        {
+            Vector3 dir = transform.localScale.x > 0 ? new Vector3(1, 0.5f, 0) : new Vector3(-1, 0.5f, 0);
+            launchVelocity = dir.normalized * 20f;
+        }
 
         GameObject arrowObj = ArrowPool.Instance.GetArrow(info.arrowPrefab, spawnPos, Quaternion.identity);
         if (arrowObj != null)
@@ -202,8 +236,8 @@ public class PlayerController : MonoBehaviour, ISkillCaster
             Arrow arrow = arrowObj.GetComponent<Arrow>();
             if (arrow != null)
             {
-                arrow.SetGravity(9.81f);
-                arrow.Launch(info, info.arrowPrefab, dir * 20f, gameObject);
+                arrow.SetGravity(gravity); // 중력 적용 필수
+                arrow.Launch(info, info.arrowPrefab, launchVelocity, gameObject);
             }
         }
     }
@@ -271,14 +305,27 @@ public class PlayerController : MonoBehaviour, ISkillCaster
         if (_attackRoutine != null) StopCoroutine(_attackRoutine);
         _isAttacking = true;
         _isAutoFiring = false;
-        _attackRoutine = null;
 
-        Transform target = GetTarget();
-        if (target != null) _character.Sprite.flipX = target.position.x < transform.position.x;
+        // 1. 애니메이션 트리거 실행
+        switch (info.type)
+        {
+            case SkillType.MultiShot:
+            case SkillType.DirectShot:
+                _character.Anim.SetTrigger("Skill2");
+                yield return new WaitForSeconds(0.4f);
+                break;
+            case SkillType.ClusterShot:
+                _character.Anim.SetTrigger("Skill3");
+                yield return new WaitForSeconds(0.5f);
+                break;
+            default:
+                _character.Anim.SetBool(AnimationKey.IsAttack, true);
+                yield return new WaitForSeconds(0.1f);
+                break;
+        }
 
-        _character.Anim.SetBool(AnimationKey.IsAttack, true);
-        yield return new WaitForSeconds(0.1f);
         UseSkillLogic(info);
+
         yield return new WaitForSeconds(0.2f);
 
         _isAttacking = false;
@@ -332,15 +379,15 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     private void HandleDeath()
     {
         StopAllCoroutines();
+        _rb.simulated = false;
+        _rb.linearVelocity = Vector2.zero;
+
         StartCoroutine(DeathSequenceRoutine());
     }
 
     private IEnumerator DeathSequenceRoutine()
     {
-        _character.Anim.SetTrigger(AnimationKey.Die);
-        var col = GetComponent<Collider2D>();
-        if (col != null) col.enabled = false;
-        yield return new WaitForSeconds(2.0f);
+        yield return new WaitForSeconds(0.5f);
         gameObject.SetActive(false);
     }
 
@@ -348,5 +395,24 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     {
         GameObject target = GameObject.FindGameObjectWithTag("Enemy");
         return target != null ? target.transform : null;
+    }
+
+    public void ForceGameOver()
+    {
+        if (_character.Health.IsDead && !gameObject.activeSelf) return;
+
+        StopAllCoroutines();
+
+        _rb.simulated = false;
+        _rb.linearVelocity = Vector2.zero;
+        var col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+
+        _character.Anim.SetBool(AnimationKey.IsRun, false);
+        _character.Anim.SetBool("IsAttack", false);
+
+        _character.Anim.Play("skill1", 0, 0f);
+
+        StartCoroutine(DeathSequenceRoutine());
     }
 }

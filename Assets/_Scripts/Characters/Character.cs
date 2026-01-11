@@ -24,9 +24,7 @@ public class Character : MonoBehaviour
         {
             Health.OnDamageTaken += (damage, pos, dir) => {
                 if (DamagePopupManager.Instance != null)
-                {
                     DamagePopupManager.Instance.ShowPopup(damage, pos, dir);
-                }
             };
         }
     }

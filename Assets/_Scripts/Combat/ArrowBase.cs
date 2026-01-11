@@ -39,8 +39,6 @@ public abstract class ArrowBase : MonoBehaviour
         this.owner = owner;
         isLaunched = true;
 
-        transform.SetParent(null);
-
         rb.simulated = true;
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.gravityScale = 0;
@@ -54,10 +52,9 @@ public abstract class ArrowBase : MonoBehaviour
 
     protected virtual void OnTriggerEnter2D(Collider2D other)
     {
-        if (!isLaunched) return;
+        if (!isLaunched || gameObject == null) return;
 
         if (other.gameObject == owner) return;
-
         if (owner != null && other.CompareTag(owner.tag)) return;
 
         if (other.CompareTag("Enemy") || other.CompareTag("Player"))
@@ -67,6 +64,7 @@ public abstract class ArrowBase : MonoBehaviour
         }
         else if (other.CompareTag("Ground"))
         {
+            isLaunched = false;
             StartCoroutine(StuckRoutine(other.transform));
         }
     }
@@ -79,10 +77,17 @@ public abstract class ArrowBase : MonoBehaviour
         if (target != null)
         {
             int damage = (info != null && info.damage > 0) ? info.damage : 10;
-
             Vector3 hitDir = rb.linearVelocity.normalized;
-
             if (hitDir == Vector3.zero) hitDir = transform.right;
+
+            if (GameManager.Instance != null && GameManager.Instance.skillDatabase != null)
+            {
+                GameObject hitFX = GameManager.Instance.skillDatabase.skillEffectMap["Hit"];
+                if (hitFX != null && EffectPool.Instance != null)
+                {
+                    EffectPool.Instance.PlayEffect(hitFX, transform.position, Quaternion.identity);
+                }
+            }
 
             target.TakeDamage(damage, hitDir);
         }
@@ -92,8 +97,6 @@ public abstract class ArrowBase : MonoBehaviour
     {
         isLaunched = false;
         StopFlight();
-
-        // 물리 연산 중단 및 고정
         rb.simulated = false;
         transform.SetParent(ground, true);
 
@@ -114,6 +117,10 @@ public abstract class ArrowBase : MonoBehaviour
     {
         isLaunched = false;
         StopFlight();
-        ArrowPool.Instance.ReturnArrow(originPrefab, gameObject);
+
+        if (ArrowPool.Instance != null && gameObject.activeSelf)
+        {
+            ArrowPool.Instance.ReturnArrow(originPrefab, gameObject);
+        }
     }
 }
