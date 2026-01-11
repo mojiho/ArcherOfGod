@@ -3,6 +3,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
+/* 
+ *  스킬 시스템 클래스 입니다.
+ *  플레이어가 장착한 스킬들의 쿨타임을 관리합니다.
+ */
+
 public class SkillSystem : MonoBehaviour
 {
     [Header("Equipped Skills (Loadout)")]

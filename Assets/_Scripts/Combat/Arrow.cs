@@ -1,6 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
+/*
+ *  화살의 비행을 담당하는 스크립트 입니다.
+ */
+    
 public class Arrow : ArrowBase
 {
     private float _gravity = 9.81f;

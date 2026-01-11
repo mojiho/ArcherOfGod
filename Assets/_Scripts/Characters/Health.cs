@@ -16,9 +16,9 @@ public class Health : MonoBehaviour, IDamageable
     public int _currentHp;
     private bool _isDead;
 
-    public event Action<int, int> OnHpChanged;      // (현재 HP, 최대 HP)
-    public event Action<int, Vector3, Vector3> OnDamageTaken; // (데미지, 위치, 방향)
-    public event Action OnDead;                      // 사망 시 호출
+    public event Action<int, int> OnHpChanged;
+    public event Action<int, Vector3, Vector3> OnDamageTaken;
+    public event Action OnDead;
 
     public bool IsDead => _isDead;
 

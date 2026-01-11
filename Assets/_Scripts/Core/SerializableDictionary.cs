@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// 이 클래스를 상속받아 구체적인 타입을 만듭니다.
+/*
+ *  Unity의 Inspector에서 Dictionary를 직렬화하여 편집할 수 있도록 해주는 클래스 입니다.
+ */
 [System.Serializable]
 public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
 {

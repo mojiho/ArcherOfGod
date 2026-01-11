@@ -1,14 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static MultiShotSkill;
 
-[RequireComponent(typeof(Rigidbody2D))] // 리지드바디 필수
+/*
+ *  플레이어 캐릭터의 움직임과 스킬 사용을 담당하는 스크립트 입니다.
+ */
+
+[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour, ISkillCaster
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float jumpShotPower = 15f; // 점프샷 높이
+    [SerializeField] private float jumpShotPower = 1f;
     private bool _isDashing = false; 
     private bool _isJumping = false; 
 
@@ -22,7 +25,7 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
     private Character _character;
     private SkillSystem _skillSystem;
-    private Rigidbody2D _rb; // [추가] 물리 제어용
+    private Rigidbody2D _rb;
 
     private Dictionary<SkillType, SkillStrategy> _skillStrategies;
     private readonly KeyCode[] _skillKeys = { KeyCode.Z, KeyCode.X, KeyCode.C, KeyCode.V, KeyCode.B };
@@ -44,7 +47,7 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     {
         _character = GetComponent<Character>();
         _skillSystem = GetComponent<SkillSystem>();
-        _rb = GetComponent<Rigidbody2D>(); // [중요] 컴포넌트 가져오기
+        _rb = GetComponent<Rigidbody2D>();
 
         _skillStrategies = new Dictionary<SkillType, SkillStrategy>
         {
@@ -69,13 +72,10 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     {
         if (_character.Health.IsDead) return;
 
-        // 1. 입력 감지
         ReadMoveInput();
 
-        // 2. 애니메이션 & 방향 보기 (여기서 적 바라보기 처리)
         UpdateAnimation();
 
-        // 점프 중이거나 대쉬 중일 때는 스킬/공격 입력 불가
         if (!_isJumping && !_isDashing)
         {
             HandleSkillInput();
@@ -83,16 +83,11 @@ public class PlayerController : MonoBehaviour, ISkillCaster
         }
     }
 
-    // [핵심 변경] 물리 이동은 FixedUpdate에서 처리해야 부드럽습니다.
     private void FixedUpdate()
     {
         if (_character.Health.IsDead) return;
         ApplyMovePhysics();
     }
-
-    // ========================================================================
-    // 이동 관련 (물리 적용)
-    // ========================================================================
 
     private void ReadMoveInput()
     {
@@ -104,10 +99,8 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
     private void ApplyMovePhysics()
     {
-        // [핵심] 대쉬 중일 때는 플레이어의 키 입력(속도 0 만들기)을 무시해야 쭉 미끄러짐
         if (_isDashing) return;
 
-        // 점프 중에는 공중 이동 제약 (원한다면 0.5f 곱해서 느리게 이동 가능)
         float currentSpeed = _isJumping ? moveSpeed * 0.3f : moveSpeed;
 
         if (_moveInput.x != 0)
@@ -126,13 +119,13 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
     private IEnumerator DashRoutine()
     {
-        _isDashing = true; // 이동 입력 무시 시작
-        _isAttacking = true; // 다른 스킬 사용 불가
-        _character.Anim.SetBool(AnimationKey.IsRun, true); // 달리기 모션 or 대쉬 모션
+        _isDashing = true;
+        _isAttacking = true; 
+        _character.Anim.SetBool(AnimationKey.IsRun, true); 
 
-        yield return new WaitForSeconds(0.4f); // 0.4초 동안 대쉬 관성 유지
+        yield return new WaitForSeconds(0.1f);
 
-        _rb.linearVelocity = Vector2.zero; // 대쉬 끝, 정지
+        _rb.linearVelocity = Vector2.zero;
         _isDashing = false;
         _isAttacking = false;
         _character.Anim.SetBool(AnimationKey.IsRun, false);
@@ -144,26 +137,21 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
     private IEnumerator JumpShotRoutine(SkillInfo info)
     {
-        // 1. 상태 잠금 (이동, 공격, 스킬 불가)
         _isJumping = true;
         _isAttacking = true;
         _isAutoFiring = false;
 
-        // 2. 슈퍼 점프 (다이렉트샷 회피)
-        _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0); // Y속도 리셋
+        _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0);
         _rb.AddForce(Vector2.up * jumpShotPower, ForceMode2D.Impulse);
 
-        // 3. 공중 회전 (360도) - DOTween이 없으므로 코루틴으로 회전
-        float rotateDuration = 0.4f;
+        float rotateDuration = 0.01f;
         float elapsed = 0f;
-        float startZ = 0f; // 2D 스프라이트 회전은 Z축
+        float startZ = 0f;
 
-        // 회전하는 동안 화살 발사
+        yield return new WaitForSeconds(0.1f);
+
         bool fired = false;
 
-        // 스프라이트 렌더러가 아니라 부모나 별도 회전체를 돌려야 하는데,
-        // 여기서는 간단히 SpriteRenderer가 아닌 GameObject 자체를 돌리거나
-        // 연출용으로 Anim을 쓰는게 좋지만, 요청대로 코드 회전 구현:
         Transform visual = _character.Sprite.transform;
 
         while (elapsed < rotateDuration)
@@ -175,24 +163,21 @@ public class PlayerController : MonoBehaviour, ISkillCaster
             float z = Mathf.Lerp(0, 360, t);
             visual.localRotation = Quaternion.Euler(0, 0, z);
 
-            // 중간(50%) 쯤에 화살 발사
             if (!fired && t >= 0.5f)
             {
                 fired = true;
-                FireSkillArrow(info); // 내부 발사 로직
+                FireSkillArrow(info);
             }
 
             yield return null;
         }
-        visual.localRotation = Quaternion.identity; // 회전 원복
+        visual.localRotation = Quaternion.identity; 
 
-        // 4. 착지 대기 (땅에 닿을 때까지)
         while (!IsGrounded())
         {
             yield return null;
         }
 
-        // 5. 상태 해제
         _isJumping = false;
         _isAttacking = false;
     }
@@ -200,8 +185,6 @@ public class PlayerController : MonoBehaviour, ISkillCaster
 
     private void FireSkillArrow(SkillInfo info)
     {
-        // 점프샷 전용 발사 (전략 클래스 안 쓰고 직접 발사하거나, Normal 전략 재사용)
-        // 여기선 간단히 직선/약간 아래로 발사
         if (ArrowPool.Instance == null) return;
 
         Vector3 spawnPos = firePos.position;
@@ -235,21 +218,17 @@ public class PlayerController : MonoBehaviour, ISkillCaster
         bool isRunning = Mathf.Abs(_moveInput.x) > 0.1f;
         _character.Anim.SetBool(AnimationKey.IsRun, isRunning);
 
-        // 공격 중이 아닐 때만 방향 전환 허용
         if (!_isAttacking)
         {
             if (isRunning)
             {
-                // [이동 중] 입력 방향 바라보기
                 _character.Sprite.flipX = _moveInput.x < 0f;
             }
             else
             {
-                // [멈춤] 적 바라보기 (요청하신 기능)
                 Transform target = GetTarget();
                 if (target != null)
                 {
-                    // 적이 왼쪽에 있으면 flipX = true (왼쪽 봄)
                     _character.Sprite.flipX = target.position.x < transform.position.x;
                 }
             }
@@ -257,8 +236,6 @@ public class PlayerController : MonoBehaviour, ISkillCaster
     }
 
     private bool IsMoving() => Mathf.Abs(_moveInput.x) > 0.1f;
-
-    // ... (아래 HandleSkillInput, PlaySkillAction 등 나머지 코드는 기존과 동일 유지) ...
 
     private void HandleSkillInput()
     {

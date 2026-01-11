@@ -1,6 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
+/*
+ *  화살의 기본 동작을 담당하는 추상 클래스 입니다.
+ */
+
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Collider2D))]
 public abstract class ArrowBase : MonoBehaviour

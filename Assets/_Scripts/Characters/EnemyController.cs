@@ -2,16 +2,20 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-[RequireComponent(typeof(Rigidbody2D))] // 적도 물리 필수
+/*
+ * 적 캐릭터의 행동을 제어하는 클래스입니다.
+ */
+
+[RequireComponent(typeof(Rigidbody2D))]
 public class EnemyController : MonoBehaviour, ISkillCaster
 {
     [SerializeField] private Transform firePos;
-    [SerializeField] private float moveSpeed = 2f; // 이동 속도 추가
+    [SerializeField] private float moveSpeed = 3f;
 
     private SkillInfo _normalData;
     private bool _isActing;
     private Character _character;
-    private Rigidbody2D _rb; // [추가]
+    private Rigidbody2D _rb; 
 
     private Dictionary<SkillType, SkillStrategy> _skillStrategies;
 
@@ -31,7 +35,7 @@ public class EnemyController : MonoBehaviour, ISkillCaster
     private void Awake()
     {
         _character = GetComponent<Character>();
-        _rb = GetComponent<Rigidbody2D>(); // [추가]
+        _rb = GetComponent<Rigidbody2D>();
 
         _skillStrategies = new Dictionary<SkillType, SkillStrategy>
         {
@@ -52,7 +56,6 @@ public class EnemyController : MonoBehaviour, ISkillCaster
     private void HandleDeath()
     {
         StopAllCoroutines();
-        // 사망 시 미끄러짐 방지
         _rb.linearVelocity = Vector2.zero;
         StartCoroutine(DeathSequenceRoutine());
     }
@@ -72,10 +75,8 @@ public class EnemyController : MonoBehaviour, ISkillCaster
 
         while (!_character.Health.IsDead)
         {
-            // [변경] 물리 기반 이동 실행
             yield return StartCoroutine(MoveState());
 
-            // 공격 시 멈춤
             _rb.linearVelocity = Vector2.zero;
 
             bool isPlayerAlive = !GameManager.Instance.player.GetComponent<Character>().Health.IsDead;
@@ -88,7 +89,6 @@ public class EnemyController : MonoBehaviour, ISkillCaster
         }
     }
 
-    // [핵심 변경] 물리 속도로 이동 구현
     private IEnumerator MoveState()
     {
         Transform target = GetTarget();
@@ -97,27 +97,22 @@ public class EnemyController : MonoBehaviour, ISkillCaster
         _character.Anim.SetBool(AnimationKey.IsRun, true);
 
         float moveTime = 0f;
-        float duration = 1.0f; // 1초간 추적
+        float duration = 1.0f; 
 
         while (moveTime < duration)
         {
             if (_character.Health.IsDead) break;
 
-            // X축 방향 결정 (1 or -1)
             float dirX = (target.position.x > transform.position.x) ? 1f : -1f;
 
-            // 바라보는 방향
             _character.Sprite.flipX = (dirX < 0);
 
-            // [수정] Translate 대신 linearVelocity 사용 -> 벽 충돌 부드러움
             _rb.linearVelocity = new Vector2(dirX * moveSpeed, _rb.linearVelocity.y);
 
             moveTime += Time.deltaTime;
-            // 물리 업데이트 대기를 위해 FixedUpdate 타이밍에 맞추거나 null 대기
             yield return null;
         }
 
-        // 이동 끝, 멈춤
         _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
         _character.Anim.SetBool(AnimationKey.IsRun, false);
     }
@@ -128,7 +123,6 @@ public class EnemyController : MonoBehaviour, ISkillCaster
 
         _isActing = true;
 
-        // 공격 중엔 확실히 멈춤
         _rb.linearVelocity = Vector2.zero;
 
         Transform target = GetTarget();

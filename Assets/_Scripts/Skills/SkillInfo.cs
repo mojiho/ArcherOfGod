@@ -1,6 +1,10 @@
 using System;
 using UnityEngine;
 
+/*
+ *  스킬 정보 클래스 입니다.
+ */
+
 [Serializable]
 public class SkillInfo
 {

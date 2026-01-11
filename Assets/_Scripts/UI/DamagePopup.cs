@@ -2,6 +2,11 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 
+/* 
+ *  데미지 팝업 클래스 입니다.
+ *  적이나 플레이어가 데미지를 입었을 때 나타나는 숫자 팝업을 관리합니다.
+ */
+
 public class DamagePopup : MonoBehaviour
 {
     [SerializeField] private TextMeshPro textMesh;

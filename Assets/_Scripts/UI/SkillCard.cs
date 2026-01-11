@@ -3,6 +3,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/* 
+ *  스킬 카드 UI 입니다.
+ *  스킬의 아이콘, 쿨타임 등을 표시합니다.
+ */
+
 public class SkillCard : MonoBehaviour
 {
     [Header("UI References")]

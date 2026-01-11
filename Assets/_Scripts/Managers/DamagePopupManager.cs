@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using UnityEngine;
 
+/* 
+ *  데미지 팝업 매니저 클래스 입니다.
+ *  데미지 팝업 오브젝트를 풀링하여 관리합니다.
+ */
+
 public class DamagePopupManager : MonoBehaviour
 {
     public static DamagePopupManager Instance { get; private set; }
