@@ -20,7 +20,7 @@ Custom Toon Shader: Shader Graph를 활용하여 빛의 방향에 따른 셀 셰
 
 Post-Processing 최적화: 모바일 성능에 큰 영향을 주는 블룸(Bloom) 등의 후처리 효과를 최소한의 비용으로 연출하기 위해, 특정 레이어에만 선별적으로 효과를 적용하거나 셰이더 단계에서 이미시브(Emissive) 효과를 구현했습니다.
 
-3. 극한의 성능 최적화 (Performance-First)
+3. 성능 최적화 (Performance-First)
 실시간 대전 게임에서 프레임 드랍은 치명적입니다. 가비지 컬렉션(GC) 스파이크를 원천 차단하기 위한 설계를 적용했습니다.
 
 Advanced Object Pooling: 화살, 히트 이펙트, UI 데미지 텍스트 등 빈번하게 생성/파괴되는 모든 오브젝트를 자체 구현한 풀링 시스템으로 관리합니다.
